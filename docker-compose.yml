@@ -6,10 +6,10 @@ services:
         ports:
             - "27017:27017"
         environment:
-            MONGO_INITDB_ROOT_USERNAME: admin
-            MONGO_INITDB_ROOT_PASSWORD: admin
-        volumes:
-            - chat_data:/data/db
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: root
+        # volumes:
+        #     - chat_data:/data/db
 
-volumes:
-    chat_data:
+# volumes:
+#     chat_data:
