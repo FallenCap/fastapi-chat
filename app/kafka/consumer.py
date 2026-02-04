@@ -11,7 +11,7 @@ class KafkaConsumerService:
         self._consumer: AIOKafkaConsumer | None = None
         self._lock = asyncio.Lock()
 
-    async def start(self, broadcast):
+    async def start(self, broadcast) -> None:
         async with self._lock:
             if (
                 not settings.KAFKA_BROKER_URL
