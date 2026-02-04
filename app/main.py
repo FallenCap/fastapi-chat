@@ -5,16 +5,13 @@ from fastapi import FastAPI
 from app.auth.auth_routes import router as auth_router
 from app.chat.chat_routes import router as chat_router
 from app.core.config import settings
-from app.socket.manager import ConnectionManager
 from app.db.database import check_connection, client
 from app.kafka.consumer import KafkaConsumerService
 from app.kafka.producer import start_producer
 from app.chat.broadcast_handler import broadcast
-from app.chat.batch_writer import ChatBatchWriter
+from app.chat.batch_writer import batch_writer
 
 kafka_consumer = KafkaConsumerService()
-socket_manager = ConnectionManager()
-batch_writer = ChatBatchWriter()
 
 
 @asynccontextmanager

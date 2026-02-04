@@ -1,7 +1,6 @@
 import asyncio
 from typing import List
 from app.db.database import chat_collection
-from app.models.chat_model import chat_message_model
 
 
 class ChatBatchWriter:
@@ -28,7 +27,7 @@ class ChatBatchWriter:
     async def add(self, message: dict):
         async with self._lock:
             self.buffer.append(message)
-
+            print(self.buffer)
             if len(self.buffer) >= self.batch_size:
                 await self.flush()
 
@@ -39,7 +38,7 @@ class ChatBatchWriter:
 
             batch = self.buffer
             self.buffer = []
-
+            
         # TODO: Bulk insert
         await chat_collection.insert_many(batch)
         print(f"💾 Inserted {len(batch)} chat messages")
@@ -48,3 +47,6 @@ class ChatBatchWriter:
         while self._running:
             await asyncio.sleep(self.flush_interval)
             await self.flush()
+
+
+batch_writer = ChatBatchWriter()

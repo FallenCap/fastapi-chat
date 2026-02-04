@@ -10,7 +10,6 @@ class ConnectionManager:
     async def connect(self, user_id: str, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.setdefault(user_id, set()).add(websocket)
-        print(self.active_connections)
 
     def disconnect(self, user_id: str, websocket: WebSocket):
         if user_id in self.active_connections:
@@ -19,8 +18,10 @@ class ConnectionManager:
                 del self.active_connections[user_id]
 
     async def send_to_user(self, user_id: str, data: dict):
-        
+
         sockets = self.active_connections.get(user_id, set())
         for ws in sockets:
             await ws.send_json(data)
 
+
+socket_manager = ConnectionManager()
