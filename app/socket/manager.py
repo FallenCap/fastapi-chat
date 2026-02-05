@@ -18,7 +18,6 @@ class ConnectionManager:
                 del self.active_connections[user_id]
 
     async def send_to_user(self, user_id: str, data: dict):
-
         sockets = self.active_connections.get(user_id, set())
         for ws in sockets:
             await ws.send_json(data)

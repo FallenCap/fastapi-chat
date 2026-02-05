@@ -10,73 +10,78 @@ class KafkaConsumerService:
         self._task: asyncio.Task | None = None
         self._consumer: AIOKafkaConsumer | None = None
         self._lock = asyncio.Lock()
+        self._running = False
 
     async def start(self, broadcast) -> None:
         async with self._lock:
-            if (
-                not settings.KAFKA_BROKER_URL
-                or not settings.KAFKA_TOPIC
-                or not settings.KAFKA_CONSUMER_ID
-            ):
-                raise RuntimeError(
-                    "Kafka consumer settings are not properly configured."
+            if self._running:
+                return
+            self._running = True
+            self._task = asyncio.create_task(self._run(broadcast))
+
+    async def _run(self, broadcast):
+        print("🟡 Kafka consumer runner started")
+
+        while self._running:
+            try:
+                if (
+                    not settings.KAFKA_BROKER_URL
+                    or not settings.KAFKA_TOPIC
+                    or not settings.KAFKA_CONSUMER_ID
+                ):
+                    raise RuntimeError(
+                        "Kafka consumer settings are not properly configured."
+                    )
+                print("🟡 Trying to start Kafka consumer...")
+
+                self._consumer = AIOKafkaConsumer(
+                    settings.KAFKA_TOPIC,
+                    bootstrap_servers=settings.KAFKA_BROKER_URL,
+                    group_id=settings.KAFKA_CONSUMER_ID,
+                    auto_offset_reset="earliest",
+                    enable_auto_commit=False,
+                    value_deserializer=lambda v: json.loads(v.decode("utf-8")),
                 )
 
-            # 🛑 Already running
-            if self._task and not self._task.done():
-                return
+                await self._consumer.start()
+                print("🟢 Kafka consumer started")
+                print("🟢 Consumer loop started")
 
-            # 🔁 Retry until Kafka is ready
-            for attempt in range(10):
-                try:
-                    self._consumer = AIOKafkaConsumer(
-                        settings.KAFKA_TOPIC,
-                        bootstrap_servers=settings.KAFKA_BROKER_URL,
-                        group_id=settings.KAFKA_CONSUMER_ID,
-                        auto_offset_reset="latest",
-                        value_deserializer=lambda v: json.loads(v.decode("utf-8")),
-                    )
+                async for msg in self._consumer:
+                    print("🟢 Message received from Kafka:", msg.value)
 
-                    await self._consumer.start()
-                    print("✅ Kafka consumer started")
-                    break
+                    await broadcast(msg.value)
 
-                except Exception:
-                    self._consumer = None
-                    print(f"⏳ Kafka not ready (attempt {attempt + 1}/10)")
-                    await asyncio.sleep(3)
-            else:
-                print("❌ Kafka unavailable, consumer not started")
-                return
+                    # ✅ commit only after successful processing
+                    await self._consumer.commit()
 
-            async def consume_loop():
-                try:
-                    while True:
-                        # 🛡️ Absolute guard
-                        if not self._consumer:
-                            break
+            except asyncio.CancelledError:
+                break
 
-                        async for msg in self._consumer:
-                            await broadcast(msg.value)
+            except Exception as e:
+                print("🔴 Kafka consumer error:", e)
 
-                except asyncio.CancelledError:
-                    pass
-
-                finally:
-                    if self._consumer:
+                if self._consumer:
+                    with contextlib.suppress(Exception):
                         await self._consumer.stop()
-                        print("🛑 Kafka consumer stopped")
+                    self._consumer = None
 
-            self._task = asyncio.create_task(consume_loop())
+                print("🟡 Retrying Kafka consumer in 3 seconds...")
+                await asyncio.sleep(3)
 
-    async def stop(self):
+        print("🛑 Kafka consumer runner stopped")
+
+    async def stop(self) -> None:
         async with self._lock:
-            if not self._task:
-                return
+            self._running = False
 
-            self._task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._task
+            if self._task:
+                self._task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._task
+
+            if self._consumer:
+                await self._consumer.stop()
 
             self._task = None
             self._consumer = None

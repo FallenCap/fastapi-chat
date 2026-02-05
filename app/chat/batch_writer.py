@@ -27,7 +27,6 @@ class ChatBatchWriter:
     async def add(self, message: dict):
         async with self._lock:
             self.buffer.append(message)
-            print(self.buffer)
             if len(self.buffer) >= self.batch_size:
                 await self.flush()
 

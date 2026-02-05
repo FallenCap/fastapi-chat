@@ -16,5 +16,5 @@ async def broadcast(message: dict):
         receiver_id=receiver_id,
         message=text,
     )
-
+    print(f"Chat", chat_doc )
     await batch_writer.add(chat_doc)

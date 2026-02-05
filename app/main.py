@@ -20,6 +20,7 @@ async def lifespan(app: FastAPI):
     try:
         await check_connection()
         await start_producer()
+        print("🟢 Creating consumer task")
         await kafka_consumer.start(broadcast)
         await batch_writer.start()
     except Exception as e:

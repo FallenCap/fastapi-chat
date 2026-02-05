@@ -41,3 +41,4 @@ async def publish_chat_message(payload: dict) -> None:
         settings.KAFKA_TOPIC,
         payload,
     )
+ 
